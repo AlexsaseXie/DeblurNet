@@ -10,6 +10,8 @@
 
 ---
 
+## 论文综述
+
 经过我们对于文献的研究和学习，我们将会主要介绍其中3篇对我们的技术方案有所指导的文章，并概述其他的文章。
 
 ### Paper 1：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
@@ -140,81 +142,6 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 
 ---
 
-### Paper 6 ：Non-blind Deblurring: Handling Kernel Uncertainty with CNNs 
-
-此篇意在解决一个重要的问题，在现实中，模糊核往往是有噪声的。在现有的非盲的去模糊方法中，都需要估计出一个准确的模糊核，才能保证最终恢复出的图像清晰。非盲的方法，使用一个MAP最大后验概率估计的方法，通过估计出的模糊核，来估计清晰的图像：
-
-![op-formula](op-formula.png)
-
-这样的方法，不光依赖我们选取的图像范数$P(l)$，还依赖这个超参数$\lambda$。作者给出了一组实验，证明了不同的$\lambda$和$P(l)$下，我们恢复的图像的效果不同。![experiment](experiment.png)
-
-在不同的$\lambda$下，利用有噪声的模糊核还原出的图片，有些细节更丰富却有人工的痕迹，有些细节不丰富但人工痕迹少。在这样的结果下，作者提出一种利用CNN把不同的还原结果综合一下，等到一个良好的去模糊结果的方法：
-
-![NBD-network](NBD-network.png)
-
-先通过不同超参数进行预测，得到不同的还原结果，在通过CNN网络进行提取特征，把特征组合起来，最终在换成一张图像，这张图像就是最终的还原结果，既保留了细节，有不会使其看起来有很多人工痕迹（纹理）。
-
----
-
-### Extra: Deep Multi-scale Convolutional Neural Network for Dynamic Scene Deblurring
-
-**Background**
-
-本文[^1]是CVPR 2017的论文，提供了自然模糊数据集，用于测试基于 CNN 的盲去模糊方法效果。现有的非盲去模糊算法往往基于对模糊核的预测，而预测结果的不精确会严重影响生成的图片。而由于有监督学习的真实模糊数据集的缺乏，现有 CNN 算法只能处理有限的特定模糊问题。
-
-**Contribution**
-
-本文的主要贡献有二：
-
-- 提出的 CNN 网络不预测或假定模糊核的信息，因此不会出现因预测模糊核偏差而导致的失真
-- 计算多尺度 Loss ，使网络更快收敛；计算对抗 Loss 改进效果
-- 提供了具有清晰图片的数据集，且不依赖模糊核
-
-**Dataset**
-
-文中提出的数据集 GOPRO 中的模糊是由物体移动、相机震动等多种因素的平均生成的。模糊过程由下述公式给出：
-
-$$
-B = g \left( \frac{1}{M} \sum_{i=0}^{M-1} S[i] \right) \tag {3}
-$$
-
-其中 $M$ 表示采样范围。 $g$ 函数表示 CRF(Camera Response Function) ，即由原图像得到观测图像的映射。实践中无法获知该 CRF 的准确值，使用常用的 $\gamma = 2.2$ 曲线，它代表了已知 CRF 的平均值，因此有映射
-
-$$
-g(x) = x^{\tfrac{1}{\gamma}} \tag {4}
-$$
-
-用不同的 $M$ 来模拟相机聚焦的时间。
-
-**Method**
-
-本文的网络结构采用了高斯金字塔模型，完整网络如下图所示。
-
-![network structure](e1-network.png)
-
-借鉴了残差网络的结构，对原始输入图片每次进行下采样，再将高层的反馈回传到低层网络中，最终采用原始尺寸图片的输出作为全部网络的输出，文章认为这样可以同时保留图片的高层与低层特征。
-
-训练采用了标准的 MSE Loss 和最近提出的对 Adversarial Loss ，其算法为：
-$$
-L_{cont} = \frac{1}{2K} \sum_{k=1}{K} \frac{1}{c_kw_kh_k} ||L_k - S_k||^2 \tag {5}
-$$
-
-$$
-\begin{align}
-L_{adv} =& \mathbb{E}_{S \sim P_{sharp}(S)}[\log D(S)] + \\
-&\mathbb{E}_{B\sim P_{blurry}(B)}[\log (1-D(G(B)))] \tag{6}
-\end{align}
-$$
-
-最终的 Loss 取二者的加权平均。
-
-实验在本文提出的 GOPRO 数据集上进行，结果表明效果显著优于现有方法。
-
-
-
----
-
-
 ### Paper 5. Learning to Understand Image Blur
 
 **Background**
@@ -259,13 +186,13 @@ $$
 
 本方法的网络模型中需要进行训练的部分为模糊图生成和模糊需求度估计，其中模糊需求度估计采用 Softmax Cross-Entropy Loss，标记为 $L_Bm$；模糊图生成的损失函数设计如下
 $$
-L_{Bm}=\frac{1}{2N}\Sigma_{i=1}^{N}\Sigma{p=1}^{P}||\frac{1}{1+\exp(-b_i(p;\Theta))}-b_i^0(p)||_2^2,
+L_{Bm}=\frac{1}{2N}\Sigma_{i=1}^{N}\Sigma{p=1}^{P}||\frac{1}{1+\exp(-b_i(p;\Theta))}-b_i^0(p)||_2^2, \tag{3}
 $$
 其中，$b_i(p;\Theta)$ 为第 $i$ 张图中第 $p$ 个像素点的估计模糊度，$\Theta$ 为估计网络的参数，$b_i^0(p)$ 为第 $i$ 张图中第 $p$ 个像素点的实际模糊度。
 
 最终的损失函数为：
 $$
-L=L_{Bm}+\lambda L_{Bc} 
+L=L_{Bm}+\lambda L_{Bc} \tag{4}
 $$
 **Experiments**
 
@@ -276,6 +203,78 @@ $$
 接下来在自己提出的 SmartBlur 数据集上进行了模糊图生成和模糊需求度估计的实验，其中模糊图生成结果同样与上述算法进行了对比并达到了最优结果；在模糊需求度估计方面，其分类精度达到了 81.4%，同时还进行对比实验验证了其双重注意力机制的有效性，如下图所示，对比了不同融合方法下的分类精度，可以看到最终采用的融合方式达到了最优结果。
 
 ![5-result-2](5-result-2.png)
+
+---
+
+### Paper 6 ：Non-blind Deblurring: Handling Kernel Uncertainty with CNNs 
+
+此篇意在解决一个重要的问题，在现实中，模糊核往往是有噪声的。在现有的非盲的去模糊方法中，都需要估计出一个准确的模糊核，才能保证最终恢复出的图像清晰。非盲的方法，使用一个MAP最大后验概率估计的方法，通过估计出的模糊核，来估计清晰的图像：
+
+![op-formula](op-formula.png)
+
+这样的方法，不光依赖我们选取的图像范数$P(l)$，还依赖这个超参数$\lambda$。作者给出了一组实验，证明了不同的$\lambda$和$P(l)$下，我们恢复的图像的效果不同。![experiment](experiment.png)
+
+在不同的$\lambda$下，利用有噪声的模糊核还原出的图片，有些细节更丰富却有人工的痕迹，有些细节不丰富但人工痕迹少。在这样的结果下，作者提出一种利用CNN把不同的还原结果综合一下，等到一个良好的去模糊结果的方法：
+
+![NBD-network](NBD-network.png)
+
+先通过不同超参数进行预测，得到不同的还原结果，在通过CNN网络进行提取特征，把特征组合起来，最终在换成一张图像，这张图像就是最终的还原结果，既保留了细节，有不会使其看起来有很多人工痕迹（纹理）。
+
+---
+
+### Extra: Deep Multi-scale Convolutional Neural Network for Dynamic Scene Deblurring
+
+**Background**
+
+本文[^1]是CVPR 2017的论文，提供了自然模糊数据集，用于测试基于 CNN 的盲去模糊方法效果。现有的非盲去模糊算法往往基于对模糊核的预测，而预测结果的不精确会严重影响生成的图片。而由于有监督学习的真实模糊数据集的缺乏，现有 CNN 算法只能处理有限的特定模糊问题。
+
+**Contribution**
+
+本文的主要贡献有三：
+
+- 提出的 CNN 网络不预测或假定模糊核的信息，因此不会出现因预测模糊核偏差而导致的失真
+- 计算多尺度 Loss ，使网络更快收敛；计算对抗 Loss 改进效果
+- 提供了具有清晰图片的数据集，且不依赖模糊核
+
+**Dataset**
+
+文中提出的数据集 GOPRO 中的模糊是由物体移动、相机震动等多种因素的平均生成的。模糊过程由下述公式给出：
+
+$$
+B = g \left( \frac{1}{M} \sum_{i=0}^{M-1} S[i] \right) \tag {5}
+$$
+
+其中 $M$ 表示采样范围。 $g$ 函数表示 CRF(Camera Response Function) ，即由原图像得到观测图像的映射。实践中无法获知该 CRF 的准确值，使用常用的 $\gamma = 2.2$ 曲线，它代表了已知 CRF 的平均值，因此有映射
+
+$$
+g(x) = x^{\tfrac{1}{\gamma}} \tag {6}
+$$
+
+用不同的 $M$ 来模拟相机聚焦的时间。
+
+**Method**
+
+本文的网络结构采用了高斯金字塔模型，完整网络如下图所示。
+
+![network structure](e1-network.png)
+
+借鉴了残差网络的结构，对原始输入图片每次进行下采样，再将高层的反馈回传到低层网络中，最终采用原始尺寸图片的输出作为全部网络的输出，文章认为这样可以同时保留图片的高层与低层特征。
+
+训练采用了标准的 MSE Loss 和最近提出的对 Adversarial Loss ，其算法为：
+$$
+L_{cont} = \frac{1}{2K} \sum_{k=1}{K} \frac{1}{c_kw_kh_k} ||L_k - S_k||^2 \tag {7}
+$$
+
+$$
+\begin{align}
+L_{adv} =& \mathbb{E}_{S \sim P_{sharp}(S)}[\log D(S)] + \\
+&\mathbb{E}_{B\sim P_{blurry}(B)}[\log (1-D(G(B)))] \tag{8}
+\end{align}
+$$
+
+最终的 Loss 取二者的加权平均。
+
+实验在本文提出的 GOPRO 数据集上进行，结果表明效果显著优于现有方法。
 
 ---
 
@@ -297,7 +296,7 @@ $$
 
 ---
 
-### 我们的技术方案：
+## 技术方案
 
 经过讨论，我们将采用DeBlurGAN的整体结构，并且在它的基础上进行一些改进：
 
