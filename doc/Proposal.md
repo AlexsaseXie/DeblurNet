@@ -120,10 +120,6 @@ $$
 
 在真实模糊数据集[^3]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
 
-
-
-
-
 ---
 
 ### Paper 4 ：Learning a Discriminative Prior for Blind Image Deblurring
@@ -160,12 +156,39 @@ $$
 
 ---
 
+### Extra: Deep Multi-scale Convolutional Neural Network for Dynamic Scene Deblurring
+
+**Background**
+
+本文[^1]是CVPR 2017的论文，提供了自然模糊数据集，用于测试基于 CNN 的盲去模糊方法效果。现有的非盲去模糊算法往往基于对模糊核的预测，而预测结果的不精确会严重影响生成的图片。而由于有监督学习的真实模糊数据集的缺乏，现有 CNN 算法只能处理有限的特定模糊问题。
+
+**Contribution**
+
+本文的主要贡献有二：
+
+- 提出的 CNN 网络不预测或假定模糊核的信息，因此不会出现因预测模糊核偏差而导致的失真
+- 计算多尺度 Loss ，使网络更快收敛；计算对抗 Loss 改进效果
+- 提供了具有清晰图片的数据集，且不依赖模糊核
+
+**Dataset**
+
+文中提出的数据集 GOPRO 中的模糊是由物体移动、相机震动等多种因素的平均生成的。
+
+
+---
+
 ## 参考文献
 
 [^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
+
 [^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
+
 [^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
+
 [^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
+
 [^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
+
 [^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
+
 [^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
