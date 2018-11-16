@@ -8,6 +8,7 @@
 
 ---
 
+<<<<<<< HEAD
 经过我们对于文献的研究和学习，我们将会主要介绍其中3篇对我们的技术方案有所指导的文章，并概述其他的文章。
 
 #### 第一篇：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
@@ -58,3 +59,35 @@
 
 ---
 
+=======
+
+
+### Paper 3. Dynamic Scene Deblurring Using Spatially Variant Recurrent Neural Networks
+
+**Background**
+
+
+
+**Contribution**
+
+
+
+**Method**
+
+- IIR model
+- network
+- feature
+
+
+
+**Experiment**
+
+- dataset
+- configuration
+- comparison
+- result
+
+
+
+**Conclusion** 
+>>>>>>> 8c5327026fbb4783c4828fe2956fdb9d601a731b
