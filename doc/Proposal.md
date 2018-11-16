@@ -124,20 +124,19 @@ $$
 
 
 
-
 ---
 
-#### 第四篇：Learning a Discriminative Prior for Blind Image Deblurring
+### Paper 4 ：Learning a Discriminative Prior for Blind Image Deblurring
 
 阅读此篇论文遇到了很大的困难，因为此论文的去模糊部分运用到了很多的数学，所以就简述一些整体的思路。
 
-![optimize-formula](C:\Users\xyw\Desktop\数字媒体：多媒体\图像\DeblurHW\doc\optimize-formula.png)
+![optimize-formula](optimize-formula.png)
 
 在一个盲的去模糊问题中，一个常用的方法即是求解上述优化问题。作者将问题分为对于I和k的两个子问题，使用迭代下降的方法，求解两个子问题，就得到了原清晰图像I和模糊核k。在求解上述优化问题的过程中，有一项$f(I)$，它表达的是这个此图像是否清晰。作者训练了一个CNN网络来计算这个$f(I)$。
 
 这个分辨网络如下：
 
-![CNN-D-structure](C:\Users\xyw\Desktop\数字媒体：多媒体\图像\DeblurHW\doc\CNN-D-structure.png)
+![CNN-D-structure](CNN-D-structure.png)
 
 这个网络接受一张图片，输出1（模糊）或者0（清晰）。
 
@@ -145,6 +144,21 @@ $$
 
 ---
 
+### Paper 6 ：Non-blind Deblurring: Handling Kernel Uncertainty with CNNs 
+
+此篇意在解决一个重要的问题，在现实中，模糊核往往是有噪声的。在现有的非盲的去模糊方法中，都需要估计出一个准确的模糊核，才能保证最终恢复出的图像清晰。非盲的方法，使用一个MAP最大后验概率估计的方法，通过估计出的模糊核，来估计清晰的图像：
+
+![op-formula](op-formula.png)
+
+这样的方法，不光依赖我们选取的图像范数$P(l)$，还依赖这个超参数$\lambda$。作者给出了一组实验，证明了不同的$\lambda$和$P(l)$下，我们恢复的图像的效果不同。![experiment](experiment.png)
+
+在不同的$\lambda$下，利用有噪声的模糊核还原出的图片，有些细节更丰富却有人工的痕迹，有些细节不丰富但人工痕迹少。在这样的结果下，作者提出一种利用CNN把不同的还原结果综合一下，等到一个良好的去模糊结果的方法：
+
+![NBD-network](NBD-network.png)
+
+先通过不同超参数进行预测，得到不同的还原结果，在通过CNN网络进行提取特征，把特征组合起来，最终在换成一张图像，这张图像就是最终的还原结果，既保留了细节，有不会使其看起来有很多人工痕迹（纹理）。
+
+---
 
 ## 参考文献
 
