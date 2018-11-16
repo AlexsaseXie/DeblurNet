@@ -8,7 +8,6 @@
 
 ---
 
-<<<<<<< HEAD
 经过我们对于文献的研究和学习，我们将会主要介绍其中3篇对我们的技术方案有所指导的文章，并概述其他的文章。
 
 #### 第一篇：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
@@ -58,8 +57,6 @@
 上述给出了DeblurGAN之后，去模糊图片的一些物体识别评价值。可以发现，DeblurGAN方法可以获得更好的recall和F1 score。本文评价这种利用物体识别方法来评价去模糊效果更好，更能反应人类的视觉效果，是否一个物体被还原的很清晰。
 
 ---
-
-=======
 
 
 ### Paper 3. Dynamic Scene Deblurring Using Spatially Variant Recurrent Neural Networks
