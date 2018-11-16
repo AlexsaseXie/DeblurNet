@@ -192,3 +192,29 @@ $$
 [^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
 
 [^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
+
+---
+
+### 我们的技术方案：
+
+经过讨论，我们将采用DeBlurGAN的整体结构，并且在它的基础上进行一些改进：
+
+1、我们发现DeBlurGAN生成的图像的PSNR值相对低一些，而在调研中，RNN网络的文章生成的图像结果PSNR较好。我们考虑将生成网络G的部分进行修改和替换，进行对比实验。
+
+2、我们发现去模糊得到的结果局部还是有些模糊，也有一些纹理问题，我们考虑使用滤波器来进一步消除这些细节问题
+
+3、DeBlurGAN的判别网络D有些复杂，借鉴其他的文章2值的判别输出，我们会尝试对于此部分进行改进
+
+4、尝试在野生的无对照数据集上进行训练和实验
+
+我们整体的工作流程大概如下：
+
+1、搜集数据集
+
+2、编写新的生成网络model
+
+3、编写新的判断网络
+
+4、训练并实验
+
+5、总结&展示
