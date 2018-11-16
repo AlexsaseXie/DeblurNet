@@ -1,3 +1,5 @@
+
+
 # 图像大作业（去模糊）论文综述&技术方案
 
 石耕源 2015013219 
@@ -10,7 +12,7 @@
 
 经过我们对于文献的研究和学习，我们将会主要介绍其中3篇对我们的技术方案有所指导的文章，并概述其他的文章。
 
-#### 第一篇：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
+### Paper 1：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
 
 这是推荐文献之中的第一篇，整体行文十分流畅，达到的效果也相当可圈可点。它使用了生成对抗网络来实现针对未知模糊核的图像的恢复。他们这样做主要是认为去模糊是一种图像到图像的转换，而这种转换，例如在风格迁移、分辨率扩大等问题上，GAN都有比较好的表现。除此之外，作者使用的Loss函数也是有多部分组成，既包含判断网络给出的结果，也包含去模糊后图像与ground-truth的差距。这样的设计在实践中效果更好。
 
@@ -48,7 +50,7 @@
 
 ![result-gopro](result-gopro.png)
 
-在第二个Kohler的数据集上，结果表现也和在GoPro数据集上的结果类似。
+在第二个K&ouml;hler的数据集上，结果表现也和在GoPro数据集上的结果类似。
 
 在第三个YOLO的数据集上，本文通过自己的模糊图片生成方法生成了多组街景和模糊街景的对照图片对，并通过自己的预测网络进行去模糊操作。再利用YOLO上一些预训练好的物体识别网络，来对比去模糊前和去模糊后不同的物体识别率，进而反应去模糊操作是否有效。
 
@@ -63,27 +65,69 @@
 
 **Background**
 
-
+本文主要针对的是相机震动和物体运动产生的模糊，是基于CNN的盲去模糊方法。文中使用RNN实现去卷积过程，并且针对现有CNN方法需要计算庞大的模型的问题提出解决方案，最终评价指标表现优秀。
 
 **Contribution**
 
+本文的贡献主要有三：
 
+- 去卷积 RNN 网络的权重由 CNN 网络学习得到，最终产生端对端可训练的模型，能够应对多样化的模糊情况
+- 将去模糊过程阐述为求解无限冲击响应 (Infinite Impulse Response, IIR) 模型问题，指出用 RNN 可以有效求解该问题，并具有较大感受野
+- 实验表明该方法的精确度、速度、模型大小都优于最先进方法
 
 **Method**
 
-- IIR model
-- network
-- feature
+图像模糊的过程可以表示为
+$$
+y[n] = \sum_{m = 0}^M k[m]x[n-m] \tag{1}
+$$
+其中 $x$ 表示原始图像， $k$ 表示模糊核， $y$ 表示模糊后图像， $M$ 表示模糊核大小。可反解原图像 $x$ 为
+$$
+x[n] = \frac{y[n]}{k[0]} - \dfrac{\sum_{m=1}^M k[m]x[n-m]}{k[0]} \tag{2}
+$$
+ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为信号处理领域的 IIR 模型。方程展开后可表示为对模糊信号 $y$ 作用逆滤波，而实验表明，逆滤波矩阵的参数比原模糊核的参数多很多，因此在使用基于 CNN 的去卷积方法时，需要使用较大的模型来提高感受野的范围。
+
+同时注意到 $(2)$ 中实际上只有 $M$ 个参数需要求解，即 $k[m]$ 。使用 RNN 可以以较小的模型求解该问题。同时还需要在每个 RNN 网络之后加入 CNN 以融合不同方向学到的信息。
 
 
+
+本文设计的网络结构如下。
+
+![network structure](3-network.png)
+
+先于 feature extraction 阶段使用卷积层提取原图像的 feature map ，后通过 weight generation 部分生成 RNN 网络的权重。将 feature map 通过四个 RNN 模块完成去卷积后重建图片并进行评价。
+
+该网络结构的主要特点有：
+
+- 每个 RNN 模块都考虑了四个方向，并在其后加入一个卷积层来聚合输出，提供了较大的感受野
+- weight generation 部分除了最后一个之外的每个卷积层后面使用 ReLU 整流，最后一个卷积层后面使用双曲正切函数 ($\tanh$)，从而使权值分布在 $[0,1]$ 区间
+- feature extraction，RNN deconvolution，reconstrucion 部分除了最后一个之外的每个卷积层后面加使用 负斜率为0.1的 Leaky ReLU 整流
+- 重建部分使用双线性插值上采样，防止 grid artifact 问题
+- 使用 skip link 以加快训练速度和防止梯度消失
 
 **Experiment**
 
-- dataset
-- configuration
-- comparison
-- result
+本文在GOPRO数据集[^1] 上进行了实验，与传统方法[2, 3, 4]，基于 CNN 的方法 [5, 6, 1] 进行了对比。
+
+各方法的 PSNR (尖峰信噪比) 值、 SSIM (结构相似性) 值如下表所示。可见本文方法均优于其他方法。
+
+|          | Whyte | Xu   | Sun  | Pan  | Liu  | Nah   | Gong | Proposed |
+| -------- | ----- | ---- | ---- | ---- | ---- | ----- | ---- | -------- |
+| PSNR     | 24.5  | 20.3 | 25.3 | 23.5 | 25.7 | 28.5  | 26.1 | **29.2** |
+| SSIM     | 0.85  | 0.74 | 0.85 | 0.83 | 0.86 | 0.91  | 0.86 | **0.93** |
+| time(s)  | 700   | 3800 | 1500 | 2500 |      | 15    | 1500 | **1.4**  |
+| size(MB) |       |      | 54.1 |      |      | 303.6 | 41.2 | **37.1** |
+
+在真实模糊数据集[^3]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
 
 
 
-**Conclusion** 
+## 参考文献
+
+[^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
+[^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
+[^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
+[^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
+[^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
+[^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
+[^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
