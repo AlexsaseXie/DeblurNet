@@ -87,3 +87,24 @@
 
 
 **Conclusion** 
+
+---
+
+#### 第四篇：Learning a Discriminative Prior for Blind Image Deblurring
+
+阅读此篇论文遇到了很大的困难，因为此论文的去模糊部分运用到了很多的数学，所以就简述一些整体的思路。
+
+![optimize-formula](C:\Users\xyw\Desktop\数字媒体：多媒体\图像\DeblurHW\doc\optimize-formula.png)
+
+在一个盲的去模糊问题中，一个常用的方法即是求解上述优化问题。作者将问题分为对于I和k的两个子问题，使用迭代下降的方法，求解两个子问题，就得到了原清晰图像I和模糊核k。在求解上述优化问题的过程中，有一项$f(I)$，它表达的是这个此图像是否清晰。作者训练了一个CNN网络来计算这个$f(I)$。
+
+这个分辨网络如下：
+
+![CNN-D-structure](C:\Users\xyw\Desktop\数字媒体：多媒体\图像\DeblurHW\doc\CNN-D-structure.png)
+
+这个网络接受一张图片，输出1（模糊）或者0（清晰）。
+
+作者主要在自己的随机生成的模糊核影响后的模糊图片上进行了实验，相比方法，它可以更准确的预测模糊核，达到了更好的效果。在现实拍摄的模糊图片上，也相对表现不错。
+
+---
+
