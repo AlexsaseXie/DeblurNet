@@ -109,7 +109,7 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 
 **Experiment**
 
-本文在GOPRO数据集[^1] 上进行了实验，与传统方法[2, 3, 4]，基于 CNN 的方法 [5, 6, 1] 进行了对比。
+本文在GOPRO数据集[^1] 上进行了实验，与传统方法[^2][^3][^4]，基于 CNN 的方法[^5][^6][^1] 进行了对比。
 
 各方法的 PSNR (尖峰信噪比) 值、 SSIM (结构相似性) 值如下表所示。可见本文方法均优于其他方法。
 
@@ -120,7 +120,7 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 | time(s)  | 700   | 3800 | 1500 | 2500 |      | 15    | 1500 | **1.4**  |
 | size(MB) |       |      | 54.1 |      |      | 303.6 | 41.2 | **37.1** |
 
-在真实模糊数据集[^3]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
+在真实模糊数据集[^7]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
 
 ---
 
@@ -278,24 +278,6 @@ $$
 
 ---
 
-## 参考文献
-
-[^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
-
-[^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
-
-[^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
-
-[^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
-
-[^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
-
-[^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
-
-[^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
-
----
-
 ## 技术方案
 
 经过讨论，我们将采用DeBlurGAN的整体结构，并且在它的基础上进行一些改进：
@@ -319,3 +301,22 @@ $$
 4、训练并实验
 
 5、总结&展示
+
+---
+
+## 参考文献
+
+[^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
+
+[^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
+
+[^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
+
+[^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
+
+[^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
+
+[^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
+
+[^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
+
