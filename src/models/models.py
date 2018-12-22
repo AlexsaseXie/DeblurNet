@@ -1,4 +1,6 @@
+import torch
 import torch.nn as nn
+from torch.autograd import Variable
 
 
 class ResBlock(nn.Module):
@@ -95,3 +97,35 @@ class OutputBlock(nn.Module):
     def forward(self, x):
         out = self.network(x)
         return out
+
+
+class ConvLSTMCell(nn.Module):
+    def __init__(self, in_shape: tuple, in_channels, hidden_channels, kernel_size):
+        super(ConvLSTMCell, self).__init__()
+        self.height, self.width = in_shape
+        self.in_channels = in_channels
+        self.hidden_channels = hidden_channels
+        self.kernel_size = kernel_size
+        self.padding = kernel_size // 2
+
+        self.conv = nn.Conv2d(self.in_channels + self.hidden_channels, 4 * self.hidden_channels, kernel_size=kernel_size, padding=self.padding)
+
+    def forward(self, inputs, state):
+        # inputs: [b, c, h, w]
+        h, c = state
+        conv = self.conv(torch.cat([inputs, h], dim=1))
+        i, f, o, g = torch.chunk(conv, 4, dim=1)
+        i = torch.sigmoid(i)
+        f = torch.sigmoid(f)
+        o = torch.sigmoid(o)
+        g = torch.tanh(g)
+
+        next_c = f * c + i * g
+        next_h = o * torch.tanh(next_c)
+
+        return next_h, next_c
+
+    @staticmethod
+    def init_state(batch_size, hidden_channels, shape):
+        height, width = shape
+        return Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda()
