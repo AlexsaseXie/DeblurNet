@@ -102,6 +102,7 @@ class OutputBlock(nn.Module):
 
 class ConvLSTMCell(nn.Module):
     default_cell_ = None
+
     def __init__(self, in_channels, hidden_channels, kernel_size=3):
         super(ConvLSTMCell, self).__init__()
         self.in_channels = in_channels
@@ -112,10 +113,10 @@ class ConvLSTMCell(nn.Module):
         self.conv = nn.Conv2d(self.in_channels + self.hidden_channels, 4 * self.hidden_channels, kernel_size=kernel_size, padding=self.padding)
 
     def forward(self, x, state):
-        # inputs: [b, c, h, w]
+        # x: [b, c, h, w]
         # take h[i], c[i], x as input,
         # returns h[i+1](namely cell's output), c[i+1]
-        h, c = state
+        h, c = torch.chunk(state, 2, dim=1)
         conv = self.conv(torch.cat([x, h], dim=1))
         i, f, o, g = torch.chunk(conv, 4, dim=1)
         i = torch.sigmoid(i)
@@ -125,16 +126,14 @@ class ConvLSTMCell(nn.Module):
 
         next_c = f * c + i * g
         next_h = o * torch.tanh(next_c)
-        next_state = (next_h, next_c)
+        next_state = torch.cat([next_h, next_c], dim=1)
 
         return next_state
 
     @staticmethod
     def init_state(batch_size, hidden_channels, shape):
         height, width = shape
-        return (Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda(),
-                Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda())
-
+        return Variable(torch.zeros(batch_size, hidden_channels * 2, height, width)).cuda()
 
     @classmethod
     def default_cell(cls, in_channels, hidden_channels, kernel_size=3):
@@ -162,20 +161,28 @@ class CNNLayer(nn.Module):
         in1 = self.input(x)
         enc1 = self.encoder1(in1)
         enc2 = self.encoder2(enc1)
-        h, c = self.lstm(x, state)
-        next_state = (h, c)
-        dec1 = self.decoder1(h)
+        next_state = self.lstm(enc2, state)
+        lstm_output = torch.chunk(next_state, 2, dim=1)[0]
+        dec1 = self.decoder1(lstm_output)
         dec2 = self.decoder2(dec1 + enc1)
         output = self.output(dec2 + in1)
         return output, next_state
 
 
 class DeblurNetGenerator(nn.Module):
-    def __init__(self, shape, num_levels, channels=3):
+    def __init__(self, shape, num_levels, batch_size, channels=6):
         super(DeblurNetGenerator, self).__init__()
         self.height, self.width = shape
         self.num_levels = num_levels
-        self.in_channels = channels
+        self.channels = channels
+
+        self.min_height = self.height / (2 ** self.num_levels)
+        self.min_width = self.width / (2 ** self.num_levels)
+        self.scaled_shapes = [(int(round(self.min_height * (2 ** i))),
+                               int(round(self.min_width * (2 ** i)))) for i in range(self.num_levels)]
+
+        self.layers = [CNNLayer(scaled_shape, self.channels) for scaled_shape in self.scaled_shapes]
+        self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0])
 
     @staticmethod
     def scale(tensor, shape):
@@ -191,20 +198,17 @@ class DeblurNetGenerator(nn.Module):
 
     def forward(self, x):
         # x: [batch, channels, height, width]
-        scaled_h, scaled_w = self.height / (2 ** self.num_levels), self.width / (2 ** self.num_levels)
         pred = x
+        preds = []
 
         for i in range(self.num_levels):
-            scaled_h = int(round(scaled_h))
-            scaled_w = int(round(scaled_w))
-
-            scaled_x = self.scale(x, (scaled_h, scaled_w))
-            scaled_last_pred = self.scale(pred, (scaled_h, scaled_w))
+            scaled_x = self.scale(x, self.scaled_shapes[i])
+            scaled_last_pred = self.scale(pred, self.scaled_shapes[i])
+            scaled_state = self.scale(self.state, self.scaled_shapes[i])
 
             inputs = torch.cat([scaled_x, scaled_last_pred], dim=1)
-            # ...
-            pred = None
 
+            pred, self.state = self.layers[i](inputs, scaled_state)
+            preds.append(pred)
 
-
-
+        return preds[-1]
