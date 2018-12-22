@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torchvision import transforms
 
 
 class ResBlock(nn.Module):
@@ -100,9 +101,8 @@ class OutputBlock(nn.Module):
 
 
 class ConvLSTMCell(nn.Module):
-    def __init__(self, in_shape: tuple, in_channels, hidden_channels, kernel_size):
+    def __init__(self, in_channels, hidden_channels, kernel_size):
         super(ConvLSTMCell, self).__init__()
-        self.height, self.width = in_shape
         self.in_channels = in_channels
         self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
@@ -112,6 +112,8 @@ class ConvLSTMCell(nn.Module):
 
     def forward(self, inputs, state):
         # inputs: [b, c, h, w]
+        # take h[i], c[i], x as input,
+        # returns h[i+1](namely cell's output), c[i+1]
         h, c = state
         conv = self.conv(torch.cat([inputs, h], dim=1))
         i, f, o, g = torch.chunk(conv, 4, dim=1)
@@ -122,10 +124,52 @@ class ConvLSTMCell(nn.Module):
 
         next_c = f * c + i * g
         next_h = o * torch.tanh(next_c)
+        next_state = (next_h, next_c)
 
-        return next_h, next_c
+        return next_state
 
     @staticmethod
     def init_state(batch_size, hidden_channels, shape):
         height, width = shape
-        return Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda()
+        return (Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda(),
+                Variable(torch.zeros(batch_size, hidden_channels, height, width)).cuda())
+
+
+class DeblurNetGenerator(nn.Module):
+    def __init__(self, shape, num_levels, channels=3):
+        super(DeblurNetGenerator, self).__init__()
+        self.height, self.width = shape
+        self.num_levels = num_levels
+        self.in_channels = channels
+
+    @staticmethod
+    def scale(tensor, shape):
+        # tensor: [channels, height, width] in [0, 255]
+        # when converting PIL image into tensor
+        # results lie in [0, 1]
+        tr = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Resize(shape),
+            transforms.ToTensor()
+        ])
+        return tr(tensor) * 255
+
+    def forward(self, x):
+        # x: [batch, channels, height, width]
+        scaled_h, scaled_w = self.height / (2 ** self.num_levels), self.width / (2 ** self.num_levels)
+        pred = x
+
+        for i in range(self.num_levels):
+            scaled_h = int(round(scaled_h))
+            scaled_w = int(round(scaled_w))
+
+            scaled_x = self.scale(x, (scaled_h, scaled_w))
+            scaled_last_pred = self.scale(pred, (scaled_h, scaled_w))
+
+            inputs = torch.cat([scaled_x, scaled_last_pred], dim=1)
+            # ...
+            pred = None
+
+
+
+
