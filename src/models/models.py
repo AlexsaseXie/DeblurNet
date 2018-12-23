@@ -185,16 +185,23 @@ class DeblurNetGenerator(nn.Module):
         self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0])
 
     @staticmethod
-    def scale(tensor, shape):
+    def scale(tensor, shape, batch=True):
         # tensor: [channels, height, width] in [0, 255]
         # when converting PIL image into tensor
         # results lie in [0, 1]
+
         tr = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize(shape),
             transforms.ToTensor()
         ])
-        return tr(tensor) * 255
+
+        if not batch:
+            return tr(tensor)
+        else:
+            batches = torch.split(tensor, 1, 0)  # tuple
+            scaled_batches = [tr(one_tensor) for one_tensor in batches]
+            return torch.cat(scaled_batches, dim=0)
 
     def forward(self, x):
         # x: [batch, channels, height, width]
@@ -203,7 +210,8 @@ class DeblurNetGenerator(nn.Module):
 
         for i in range(self.num_levels):
             scaled_x = self.scale(x, self.scaled_shapes[i])
-            scaled_last_pred = self.scale(pred, self.scaled_shapes[i])
+            with torch.no_grad():
+                scaled_last_pred = self.scale(pred, self.scaled_shapes[i])
             scaled_state = self.scale(self.state, self.scaled_shapes[i])
 
             inputs = torch.cat([scaled_x, scaled_last_pred], dim=1)
