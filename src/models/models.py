@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.autograd import Variable
 from torchvision import transforms
 
@@ -8,19 +9,19 @@ class ResBlock(nn.Module):
     # reflection padding
     # instance norm
     # conv -> norm -> relu -> conv
-    def __init__(self, in_channels, out_channels, kernel_size: int, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size: int = 5, stride=1):
         super(ResBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=kernel_size // 2)
         self.norm = nn.InstanceNorm2d(out_channels)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=kernel_size // 2)
 
-        self.conv_network = nn.Sequential((
+        self.conv_network = nn.Sequential(
             self.conv1,
             self.norm,
             self.relu,
             self.conv2
-        ))
+        )
 
     def forward(self, x):
         out = x + self.conv_network(x)
@@ -28,22 +29,22 @@ class ResBlock(nn.Module):
 
 
 class EncoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size: int = 5, stride=2):
+    def __init__(self, in_channels, out_channels, kernel_size: int = 5, res_kernel_size: int = 5, stride=2):
         super(EncoderBlock, self).__init__()
         self.stride = stride
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=self.stride, padding=kernel_size // 2)
         self.relu = nn.ReLU()
-        self.res1 = ResBlock(out_channels, out_channels, kernel_size, self.stride)
-        self.res2 = ResBlock(out_channels, out_channels, kernel_size, self.stride)
-        self.res3 = ResBlock(out_channels, out_channels, kernel_size, self.stride)
+        self.res1 = ResBlock(out_channels, out_channels, res_kernel_size)
+        self.res2 = ResBlock(out_channels, out_channels, res_kernel_size)
+        self.res3 = ResBlock(out_channels, out_channels, res_kernel_size)
 
-        self.network = nn.Sequential((
+        self.network = nn.Sequential(
             self.conv,
             self.relu,
             self.res1,
             self.res2,
             self.res3
-        ))
+        )
 
     def forward(self, x):
         out = self.network(x)
@@ -51,28 +52,32 @@ class EncoderBlock(nn.Module):
 
 
 class InputBlock(EncoderBlock):
-    def __init__(self, in_channels, out_channels, kernel_size: int = 5, stride=1):
-        super(InputBlock, self).__init__(in_channels, out_channels, kernel_size, stride)
+    def __init__(self, in_channels, out_channels, kernel_size: int = 5, res_kernel_size: int = 5, stride=1):
+        super(InputBlock, self).__init__(in_channels, out_channels, kernel_size, res_kernel_size, stride)
+
+    def forward(self, x):
+        out = self.network(x)
+        return out
 
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size: int = 4, stride=2):
+    def __init__(self, in_channels, out_channels, kernel_size: int = 4, res_kernel_size: int = 5, stride=2):
         super(DecoderBlock, self).__init__()
         self.stride = stride
         self.padding = (self.stride * (in_channels - 1) - 2 * in_channels + kernel_size) // 2
-        self.res1 = ResBlock(in_channels, out_channels, kernel_size, stride)
-        self.res2 = ResBlock(out_channels, out_channels, kernel_size, stride)
-        self.res3 = ResBlock(out_channels, out_channels, kernel_size, stride)
-        self.deconv = nn.ConvTranspose2d(out_channels, out_channels, kernel_size=kernel_size, stride=self.stride, padding=self.padding)
+        self.res1 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.res2 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.res3 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.deconv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=self.stride, padding=self.padding)
         self.relu = nn.ReLU()
 
-        self.network = nn.Sequential((
+        self.network = nn.Sequential(
             self.res1,
             self.res2,
             self.res3,
             self.deconv,
             self.relu
-        ))
+        )
 
     def forward(self, x):
         out = self.network(x)
@@ -81,19 +86,19 @@ class DecoderBlock(nn.Module):
 
 class OutputBlock(nn.Module):
     # no activation at last
-    def __init__(self, in_channels, out_channels, kernel_size: int = 5, stride=1):
+    def __init__(self, in_channels, out_channels, kernel_size: int = 5, res_kernel_size: int = 5, stride=1):
         super(OutputBlock, self).__init__()
-        self.res1 = ResBlock(in_channels, out_channels, kernel_size, stride)
-        self.res2 = ResBlock(out_channels, out_channels, kernel_size, stride)
-        self.res3 = ResBlock(out_channels, out_channels, kernel_size, stride)
-        self.conv = nn.Conv2d(out_channels, out_channels, kernel_size, stride=stride, padding=kernel_size // 2)
+        self.res1 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.res2 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.res3 = ResBlock(in_channels, in_channels, res_kernel_size)
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=kernel_size // 2)
 
-        self.network = nn.Sequential((
+        self.network = nn.Sequential(
             self.res1,
             self.res2,
             self.res3,
             self.conv
-        ))
+        )
 
     def forward(self, x):
         out = self.network(x)
@@ -181,42 +186,55 @@ class DeblurNetGenerator(nn.Module):
         self.scaled_shapes = [(int(round(self.min_height * (2 ** i))),
                                int(round(self.min_width * (2 ** i)))) for i in range(self.num_levels)]
 
-        self.layers = [CNNLayer(scaled_shape, self.channels) for scaled_shape in self.scaled_shapes]
+        self.layers = [CNNLayer(scaled_shape, self.channels).cuda() for scaled_shape in self.scaled_shapes]
         self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0])
+        # self.upsamples = [nn.UpsamplingBilinear2d(size=scaled_shape) for scaled_shape in self.scaled_shapes]
 
-    @staticmethod
-    def scale(tensor, shape, batch=True):
-        # tensor: [channels, height, width] in [0, 255]
-        # when converting PIL image into tensor
-        # results lie in [0, 1]
+    # @staticmethod
+    # def scale(tensor, shape, batch=True):
+    #     # tensor: [channels, height, width] in [0, 255]
+    #     # when converting PIL image into tensor
+    #     # results lie in [0, 1]
+    #
+    #     tr = transforms.Compose([
+    #         transforms.ToPILImage(),
+    #         transforms.Resize(shape),
+    #         transforms.ToTensor()
+    #     ])
+    #
+    #     if not batch:
+    #         return tr(tensor)
+    #     else:
+    #         batches = torch.split(tensor, 1, 0)  # tuple
+    #         scaled_batches = [tr(one_tensor.squeeze()) for one_tensor in batches]
+    #         return torch.stack(tuple(scaled_batches), dim=0)
 
-        tr = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize(shape),
-            transforms.ToTensor()
-        ])
-
-        if not batch:
-            return tr(tensor)
-        else:
-            batches = torch.split(tensor, 1, 0)  # tuple
-            scaled_batches = [tr(one_tensor) for one_tensor in batches]
-            return torch.cat(scaled_batches, dim=0)
-
-    def forward(self, x):
+    def forward(self, *xs):
         # x: [batch, channels, height, width]
-        pred = x
+        pred = xs[0]
         preds = []
 
         for i in range(self.num_levels):
-            scaled_x = self.scale(x, self.scaled_shapes[i])
-            with torch.no_grad():
-                scaled_last_pred = self.scale(pred, self.scaled_shapes[i])
-            scaled_state = self.scale(self.state, self.scaled_shapes[i])
+            x_shape = (xs[i].shape[-2], xs[i].shape[-1])
 
-            inputs = torch.cat([scaled_x, scaled_last_pred], dim=1)
+            scaled_last_pred = F.interpolate(pred.detach().cuda(), size=x_shape, mode='bilinear', align_corners=False)
+            print(pred.device)
+            scaled_state = F.interpolate(self.state, size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
+            inputs = torch.cat([xs[i], scaled_last_pred], dim=1)
 
             pred, self.state = self.layers[i](inputs, scaled_state)
             preds.append(pred)
 
         return preds[-1]
+
+
+net = DeblurNetGenerator((256, 256), 3, 2)
+net = net.cuda()
+input0 = torch.randn(2, 3, 64, 64)
+input1 = torch.randn(2, 3, 128, 128)
+input2 = torch.randn(2, 3, 256, 256)
+input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
+input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
+input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
+output = net(input0, input1, input2)
+print(output.shape)
