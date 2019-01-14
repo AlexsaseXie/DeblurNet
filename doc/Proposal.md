@@ -10,6 +10,8 @@
 
 ---
 
+## 论文综述
+
 经过我们对于文献的研究和学习，我们将会主要介绍其中3篇对我们的技术方案有所指导的文章，并概述其他的文章。
 
 ### Paper 1：DeblurGAN : Blind Motion Deblurring Using Conditional Adversarial Networks
@@ -107,7 +109,7 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 
 **Experiment**
 
-本文在GOPRO数据集[^1] 上进行了实验，与传统方法[2, 3, 4]，基于 CNN 的方法 [5, 6, 1] 进行了对比。
+本文在GOPRO数据集[^1] 上进行了实验，与传统方法[^2][^3][^4]，基于 CNN 的方法[^5][^6][^1] 进行了对比。
 
 各方法的 PSNR (尖峰信噪比) 值、 SSIM (结构相似性) 值如下表所示。可见本文方法均优于其他方法。
 
@@ -118,7 +120,7 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 | time(s)  | 700   | 3800 | 1500 | 2500 |      | 15    | 1500 | **1.4**  |
 | size(MB) |       |      | 54.1 |      |      | 303.6 | 41.2 | **37.1** |
 
-在真实模糊数据集[^3]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
+在真实模糊数据集[^7]上，应用本文提出的方法生成的图像也比其他方法更加清晰。
 
 ---
 
@@ -137,6 +139,70 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 这个网络接受一张图片，输出1（模糊）或者0（清晰）。
 
 作者主要在自己的随机生成的模糊核影响后的模糊图片上进行了实验，相比方法，它可以更准确的预测模糊核，达到了更好的效果。在现实拍摄的模糊图片上，也相对表现不错。
+
+---
+
+### Paper 5. Learning to Understand Image Blur
+
+**Background**
+
+在图像去模糊的相关工作中，大部分研究主要对图像中的模糊进行估计与去除，但忽视了模糊需求度 (blur desirablity) 的影响，即图像中的模糊既可能是由于手抖、对焦失败等原因产生的负面模糊，也可能是被主动对焦虚化的正面模糊，如下图所示，可大致将图像的模糊需求度分为好、坏和一般。去模糊工作应该先判断图像中存在的模糊是哪种类型，再由此进行进一步的去除操作，本篇论文研究和提供了对图片中模糊的需求度的理解与估计方法。
+
+![5-Intro](5-Intro.png)
+
+**Contributions**
+
+本篇论文的贡献主要是以下 3 点：
+
+* 提出了端到端的网络 ABC-FuseNet，对注意力图 (Attention map)、模糊图 (Blur map) 和内容特征图 (Content feature map) 三类特征进行融合，并给出整张图的模糊需求度估计结果；
+* 建立了大规模数据集 SmartBlur，包含了不同原因导致的模糊图片数据，并提供了每张图像的逐像素模糊度和整幅图模糊需求度；
+* 在 SmartBlur 和另一个模糊图像数据集上进行了实验验证，表明了其提出的方法在模糊估计和模糊需求度估计上的性能超越了当前最好的方法。
+
+**The SmartBlur Dataset**
+
+由于现有数据集中缺少对模糊需求度的标注，本篇论文的作者首先建立了数据集 SmartBlur，其中图像的标注主要为以下两种：
+
+* 模糊度：该标注为逐像素级别，表示该位置处的模糊程度，本数据集将其分为 High Blur, Medium Blur, Low Blur 和 Clear 四种类别；
+* 模糊需求度：该标注为逐图像级别，对存在模糊的图像，给出该图像中的模糊是正面还是负面的，本数据集将其分为 Bad-Blur, Ok-Blur, Good-Blur 和 No-Blur 四种类别。
+
+此外，本数据集在建立过程中特别注意了不同模糊原因及不同模糊需求度的图像所占比例，保证了数据集的平衡性。
+
+**Method**
+
+本篇论文提出的 ABC-FuseNet 的网络结构如下图所示，主要分为四部分：
+
+* 利用扩张全卷积神经网络、空间金字塔池化、边界校正，生成图像的模糊图；
+* 利用全卷积神经网络，生成图像的注意力图；
+* 利用用于图像识别的卷积神经网络，生成图像的内容特征图；
+* 综合以上得到的 3 种特征图，利用模糊类型分类器，得到最终的模糊类型/模糊需求度。
+
+![5-pipeline](5-pipeline.png)
+
+图像的模糊图代表每个像素位置的模糊度，生成模糊图任务的主要困难是，现有的卷积神经网络存在大量池化下采样操作，削弱了对像素位置和小范围的感知能力，此外模糊区域的大小不固定，而卷积神经网络同一层的感受野大小是相同的。本方法在图像识别网络 Inception-V2 的基础上，一方面去除了原有的下采样操作，同时利用扩张卷积替换了原有的卷积操作；另一方面通过空间金字塔池化，将不同维度的特征图池化为统一尺寸，又拼接了来自高维度特征图的上采样结果后，进行一次双线性插值的上采样操作。通过这些改进，保留了特征提取过程中来自低维度特征图的位置信息，融合了不同感受野区域下的特征提取结果。为了得到更好的边界，会再次拼接低维度特征并输入边界校准层，得到最终的模糊图。
+
+图像的注意力图代表在语义层面对图像不同位置的注意程度，内容特征图则代表对图像中具体内容的理解，为了帮助判断图像中模糊的好坏，需要先提取出以上两种特征图进行辅助，本方法中均适用预训练模型实现了两种特征图的提取。
+
+在得到三种特征图后，需要使用一个融合网络接收三种特征并给出模糊需求度的估计结果，本方法使用了一个简单且轻量级的卷积神经网络实现这一功能，为了更好地进行特征融合，本方法没有直接将其进行逐频道拼接，而是使用了一种双重注意力机制，设三类特征图分别为 $A_m, B_m, C_m$，融合特征为 $B_mA_m, B_m(1-A_m), C_m$。
+
+本方法的网络模型中需要进行训练的部分为模糊图生成和模糊需求度估计，其中模糊需求度估计采用 Softmax Cross-Entropy Loss，标记为 $L_Bm$；模糊图生成的损失函数设计如下
+$$
+L_{Bm}=\frac{1}{2N}\Sigma_{i=1}^{N}\Sigma{p=1}^{P}||\frac{1}{1+\exp(-b_i(p;\Theta))}-b_i^0(p)||_2^2, \tag{3}
+$$
+其中，$b_i(p;\Theta)$ 为第 $i$ 张图中第 $p$ 个像素点的估计模糊度，$\Theta$ 为估计网络的参数，$b_i^0(p)$ 为第 $i$ 张图中第 $p$ 个像素点的实际模糊度。
+
+最终的损失函数为：
+$$
+L=L_{Bm}+\lambda L_{Bc} \tag{4}
+$$
+**Experiments**
+
+本篇论文首先在公开数据集 CUHK 上对其模糊图生成部分进行了实验验证，该数据集包含 1000 张标注了模糊区域的图像，标注类别为模糊/不模糊，实验对比了一系列模糊图生成算法的 Precision-Recall 结果，如下图所示，超越了现有的最优算法。
+
+![5-result-1](5-result-1.png)
+
+接下来在自己提出的 SmartBlur 数据集上进行了模糊图生成和模糊需求度估计的实验，其中模糊图生成结果同样与上述算法进行了对比并达到了最优结果；在模糊需求度估计方面，其分类精度达到了 81.4%，同时还进行对比实验验证了其双重注意力机制的有效性，如下图所示，对比了不同融合方法下的分类精度，可以看到最终采用的融合方式达到了最优结果。
+
+![5-result-2](5-result-2.png)
 
 ---
 
@@ -164,7 +230,7 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 
 **Contribution**
 
-本文的主要贡献有二：
+本文的主要贡献有三：
 
 - 提出的 CNN 网络不预测或假定模糊核的信息，因此不会出现因预测模糊核偏差而导致的失真
 - 计算多尺度 Loss ，使网络更快收敛；计算对抗 Loss 改进效果
@@ -175,13 +241,13 @@ $x[n]$ 的表达中又含有序列前 $M$ 时刻的值。该方程可表示为�
 文中提出的数据集 GOPRO 中的模糊是由物体移动、相机震动等多种因素的平均生成的。模糊过程由下述公式给出：
 
 $$
-B = g \left( \frac{1}{M} \sum_{i=0}^{M-1} S[i] \right) \tag {3}
+B = g \left( \frac{1}{M} \sum_{i=0}^{M-1} S[i] \right) \tag {5}
 $$
 
 其中 $M$ 表示采样范围。 $g$ 函数表示 CRF(Camera Response Function) ，即由原图像得到观测图像的映射。实践中无法获知该 CRF 的准确值，使用常用的 $\gamma = 2.2$ 曲线，它代表了已知 CRF 的平均值，因此有映射
 
 $$
-g(x) = x^{\tfrac{1}{\gamma}} \tag {4}
+g(x) = x^{\tfrac{1}{\gamma}} \tag {6}
 $$
 
 用不同的 $M$ 来模拟相机聚焦的时间。
@@ -196,13 +262,13 @@ $$
 
 训练采用了标准的 MSE Loss 和最近提出的对 Adversarial Loss ，其算法为：
 $$
-L_{cont} = \frac{1}{2K} \sum_{k=1}{K} \frac{1}{c_kw_kh_k} ||L_k - S_k||^2 \tag {5}
+L_{cont} = \frac{1}{2K} \sum_{k=1}{K} \frac{1}{c_kw_kh_k} ||L_k - S_k||^2 \tag {7}
 $$
 
 $$
 \begin{align}
 L_{adv} =& \mathbb{E}_{S \sim P_{sharp}(S)}[\log D(S)] + \\
-&\mathbb{E}_{B\sim P_{blurry}(B)}[\log (1-D(G(B)))] \tag{6}
+&\mathbb{E}_{B\sim P_{blurry}(B)}[\log (1-D(G(B)))] \tag{8}
 \end{align}
 $$
 
@@ -210,29 +276,9 @@ $$
 
 实验在本文提出的 GOPRO 数据集上进行，结果表明效果显著优于现有方法。
 
-
-
 ---
 
-## 参考文献
-
-[^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
-
-[^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
-
-[^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
-
-[^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
-
-[^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
-
-[^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
-
-[^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
-
----
-
-### 我们的技术方案：
+## 技术方案
 
 经过讨论，我们将采用DeBlurGAN的整体结构，并且在它的基础上进行一些改进：
 
@@ -255,3 +301,22 @@ $$
 4、训练并实验
 
 5、总结&展示
+
+---
+
+## 参考文献
+
+[^1]: Nah, Seungjun, Tae Hyun Kim, and Kyoung Mu Lee. "Deep multi-scale convolutional neural network for dynamic scene deblurring." *CVPR*. Vol. 1. No. 2. 2017.
+
+[^2]: L. Xu, S. Zheng, and J. Jia. Unnatural l0 sparse representation for natural image deblurring. In CVPR, 2013.
+
+[^3]: J. Pan, D. Sun, H. Pfister, and M.-H. Yang. Blind image deblurring using dark channel prior. In CVPR, 2016. 
+
+[^4]: O. Whyte, J. Sivic, A. Zisserman, and J. Ponce. Non-uniform deblurring for shaken images. IJCV, 2012.
+
+[^5]: J. Sun, W. Cao, Z. Xu, and J. Ponce. Learning a convolutional neural network for non-uniform motion blur removal. In CVPR, 2015. 
+
+[^6]: D. Gong, J. Yang, L. Liu, Y. Zhang, I. Reid, C. Shen, A. v. d. Hengel, and Q. Shi. From motion blur to motion flow: a deep learning solution for removing heterogeneous motion blur. In CVPR, 2017. 
+
+[^7]: S. Cho, J. Wang, and S. Lee. Video deblurring for hand-held cameras using patch-based synthesis. TOG, 2012. 
+
