@@ -1,5 +1,5 @@
 .idea/
-DeblurGAN/
-Deblur-rnn-repl/
+DeblurGAN/*.zip
+DeblurGAN/Deblur-rnn-repl/
 src/__pycache__/
 

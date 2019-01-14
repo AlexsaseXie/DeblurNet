@@ -3,7 +3,7 @@ from .conditional_gan_model import ConditionalGAN
 def create_model(opt):
 	model = None
 	if opt.model == 'test':
-		assert (opt.dataset_mode == 'single')
+		# assert (opt.dataset_mode == 'single')
 		from .test_model import TestModel
 		model = TestModel()
 	else:
