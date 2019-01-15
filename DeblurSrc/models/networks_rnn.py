@@ -247,7 +247,7 @@ class DeblurNetGeneratorReuse(nn.Module):
             self.state = next_h, next_c
             preds.append(pred)
 
-        return preds[-1]
+        return preds
 
 
 class DeblurNetGenerator(nn.Module):
@@ -301,7 +301,7 @@ class DeblurNetGenerator(nn.Module):
             pred, self.state = self.layers[i](inputs, scaled_state)
             preds.append(pred)
 
-        return preds[-1]
+        return preds
 
 
 if __name__ == 'main':
