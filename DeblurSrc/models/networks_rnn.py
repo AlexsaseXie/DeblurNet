@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torchvision import transforms
 
+import os
+
 from networks import get_norm_layer, weights_init
 
 
@@ -276,18 +278,23 @@ class DeblurNetGenerator(nn.Module):
 
             scaled_last_pred = F.interpolate(pred.detach().cuda(), size=x_shape, mode='bilinear', align_corners=False)
             print(pred.device)
-            scaled_state = F.interpolate(self.state, size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
+            scaled_h = F.interpolate(self.state[0], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
+            scaled_c = F.interpolate(self.state[1], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
             inputs = torch.cat([xs[i], scaled_last_pred], dim=1)
 
-            pred, self.state = self.layers[i](inputs, scaled_state)
+            pred, next_h, next_c = self.layers[i](inputs, scaled_h, scaled_c)
+            self.state = next_h, next_c
             preds.append(pred)
 
         return preds
 
 
-def test_model():
-    net = DeblurNetGenerator((256, 256), 3, 2)
+def test_model(device=None):
+    if device is not None:
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(device)
+    net = DeblurNetGeneratorReuse((256, 256), 3, 2)
     net = net.cuda()
+    # net = net.cuda()
     input0 = torch.randn(2, 3, 64, 64)
     input1 = torch.randn(2, 3, 128, 128)
     input2 = torch.randn(2, 3, 256, 256)
@@ -295,4 +302,5 @@ def test_model():
     input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
     input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
     output = net(input0, input1, input2)
-    print(output.shape)
+    for out in output:
+        print(out.shape)
