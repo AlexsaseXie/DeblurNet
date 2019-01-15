@@ -6,23 +6,24 @@ from torchvision import transforms
 
 from networks import get_norm_layer, weights_init
 
+
 def define_RNN_G(opt):
-	netG = None
-	use_gpu = len(opt.gpu_ids) > 0
-	norm_layer = get_norm_layer(norm_type=opt.norm)
+    netG = None
+    use_gpu = len(opt.gpu_ids) > 0
+    norm_layer = get_norm_layer(norm_type=opt.norm)
 
-	if use_gpu:
-		assert(torch.cuda.is_available())
+    if use_gpu:
+        assert(torch.cuda.is_available())
 
-	if opt.which_model_netG == 'rnn_reuse':
-		netG = DeblurNetGeneratorReuse(shape=(opt.fineSize, opt.fineSize), num_levels = 3, batch_size=opt.batchSize)
-	else:
-		netG = DeblurNetGenerator(shape=(opt.fineSize, opt.fineSize), num_levels = 3, batch_size=opt.batchSize)
+    if opt.which_model_netG == 'rnn_reuse':
+        netG = DeblurNetGeneratorReuse(shape=(opt.fineSize, opt.fineSize), num_levels=3, batch_size=opt.batchSize, gpu=use_gpu)
+    else:
+        netG = DeblurNetGenerator(shape=(opt.fineSize, opt.fineSize), num_levels=3, batch_size=opt.batchSize, gpu=use_gpu)
 
-	if len(opt.gpu_ids) > 0:
-		netG.cuda(opt.gpu_ids[0])
-	netG.apply(weights_init)
-	return netG
+    if len(opt.gpu_ids) > 0:
+        netG.cuda(opt.gpu_ids[0])
+    netG.apply(weights_init)
+    return netG
 
 
 class ResBlock(nn.Module):
@@ -187,7 +188,7 @@ class ConvLSTMCell(nn.Module):
 
 
 class CNNLayer(nn.Module):
-    def __init__(self, shape, channels=6):
+    def __init__(self, channels=6):
         super(CNNLayer, self).__init__()
         self.in_channels = channels
         self.out_channels = channels
@@ -226,7 +227,7 @@ class DeblurNetGeneratorReuse(nn.Module):
         self.scaled_shapes = [(int(round(self.min_height * (2 ** i))),
                                int(round(self.min_width * (2 ** i)))) for i in range(self.num_levels)]
 
-        self.layer = CNNLayer(shape, self.channels)
+        self.layer = CNNLayer(self.channels)
         self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0], gpu)  # h, c
 
     def forward(self, *xs):
@@ -262,28 +263,8 @@ class DeblurNetGenerator(nn.Module):
         self.scaled_shapes = [(int(round(self.min_height * (2 ** i))),
                                int(round(self.min_width * (2 ** i)))) for i in range(self.num_levels)]
 
-        self.layers = [CNNLayer(self.channels).cuda() for scaled_shape in self.scaled_shapes]
+        self.layers = [CNNLayer(self.channels) for scaled_shape in self.scaled_shapes]
         self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0], gpu)
-        # self.upsamples = [nn.UpsamplingBilinear2d(size=scaled_shape) for scaled_shape in self.scaled_shapes]
-
-    # @staticmethod
-    # def scale(tensor, shape, batch=True):
-    #     # tensor: [channels, height, width] in [0, 255]
-    #     # when converting PIL image into tensor
-    #     # results lie in [0, 1]
-    #
-    #     tr = transforms.Compose([
-    #         transforms.ToPILImage(),
-    #         transforms.Resize(shape),
-    #         transforms.ToTensor()
-    #     ])
-    #
-    #     if not batch:
-    #         return tr(tensor)
-    #     else:
-    #         batches = torch.split(tensor, 1, 0)  # tuple
-    #         scaled_batches = [tr(one_tensor.squeeze()) for one_tensor in batches]
-    #         return torch.stack(tuple(scaled_batches), dim=0)
 
     def forward(self, *xs):
         # x: [batch, channels, height, width]
@@ -304,7 +285,7 @@ class DeblurNetGenerator(nn.Module):
         return preds
 
 
-if __name__ == 'main':
+def test_model():
     net = DeblurNetGenerator((256, 256), 3, 2)
     net = net.cuda()
     input0 = torch.randn(2, 3, 64, 64)
