@@ -4,6 +4,26 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torchvision import transforms
 
+from networks import get_norm_layer, weights_init
+
+def define_RNN_G(opt):
+	netG = None
+	use_gpu = len(opt.gpu_ids) > 0
+	norm_layer = get_norm_layer(norm_type=opt.norm)
+
+	if use_gpu:
+		assert(torch.cuda.is_available())
+
+	if opt.which_model_netG == 'rnn_reuse':
+		netG = DeblurNetGeneratorReuse(shape=(opt.fineSize, opt.fineSize), num_levels = 3, batch_size=opt.batchSize)
+	else:
+		netG = DeblurNetGenerator(shape=(opt.fineSize, opt.fineSize), num_levels = 3, batch_size=opt.batchSize)
+
+	if len(opt.gpu_ids) > 0:
+		netG.cuda(opt.gpu_ids[0])
+	netG.apply(weights_init)
+	return netG
+
 
 class ResBlock(nn.Module):
     # reflection padding
@@ -284,13 +304,14 @@ class DeblurNetGenerator(nn.Module):
         return preds[-1]
 
 
-net = DeblurNetGenerator((256, 256), 3, 2)
-net = net.cuda()
-input0 = torch.randn(2, 3, 64, 64)
-input1 = torch.randn(2, 3, 128, 128)
-input2 = torch.randn(2, 3, 256, 256)
-input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
-input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
-input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
-output = net(input0, input1, input2)
-print(output.shape)
+if __name__ == 'main':
+    net = DeblurNetGenerator((256, 256), 3, 2)
+    net = net.cuda()
+    input0 = torch.randn(2, 3, 64, 64)
+    input1 = torch.randn(2, 3, 128, 128)
+    input2 = torch.randn(2, 3, 256, 256)
+    input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
+    input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
+    input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
+    output = net(input0, input1, input2)
+    print(output.shape)
