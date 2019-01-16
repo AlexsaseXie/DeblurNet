@@ -250,7 +250,7 @@ class DeblurNetGeneratorReuse(nn.Module):
             self.state = next_h, next_c
             preds.append(pred)
 
-        return preds
+        return tuple(preds)
 
 
 class DeblurNetGenerator(nn.Module):
@@ -286,21 +286,38 @@ class DeblurNetGenerator(nn.Module):
             self.state = next_h, next_c
             preds.append(pred)
 
-        return preds
+        return tuple(preds)
+
+
+def test_loss(pred):
+    return torch.mean(torch.mean(pred, dim=1))
 
 
 def test_model(device=None):
     if device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = str(device)
-    net = DeblurNetGeneratorReuse((256, 256), 3, 2)
+    batch = 2
+    net = DeblurNetGeneratorReuse((256, 256), 3, batch)
     net = net.cuda()
-    # net = net.cuda()
-    input0 = torch.randn(2, 3, 64, 64)
-    input1 = torch.randn(2, 3, 128, 128)
-    input2 = torch.randn(2, 3, 256, 256)
+    for param in net.parameters():
+        param.requires_grad = True
+    optimizer = torch.optim.Adam([param for param in net.parameters() if param.requires_grad], weight_decay=0, lr=1e-4)
+    net.train()
+
+    input0 = torch.randn(batch, 3, 64, 64)
+    input1 = torch.randn(batch, 3, 128, 128)
+    input2 = torch.randn(batch, 3, 256, 256)
     input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
     input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
     input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
     output = net(input0, input1, input2)
-    for out in output:
-        print(out.shape)
+
+    loss = test_loss(output[0])
+    loss.backward()
+    optimizer.step()
+
+    print(output[0].shape)
+    print(float(loss))
+
+    # for out in output:
+    #     print(out.shape)
