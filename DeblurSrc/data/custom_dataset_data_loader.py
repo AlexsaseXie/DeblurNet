@@ -16,6 +16,9 @@ def CreateDataset(opt):
     elif opt.dataset_mode == 'gopro':
         from data.gopro_dataset import GoProDataset
         dataset = GoProDataset()
+    elif opt.dataset_mode == 'gopro_multi_scale':
+        from data.gopro_dataset import GoProMultiScaleDataset
+        dataset = GoProMultiScaleDataset()
     else:
         raise ValueError("Dataset [%s] not recognized." % opt.dataset_mode)
 

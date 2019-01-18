@@ -95,7 +95,7 @@ def get_transform(opt):
     if opt.resize_or_crop == 'resize_and_crop':
         osize = [opt.loadSizeX, opt.loadSizeY]
         transform_list.append(transforms.Scale(osize, Image.BICUBIC))
-        transform_list.append(M_RandomCrop(opt.fineSize))
+        transform_list.append(M_RandomCrop(opt.fineSize1))
     elif opt.resize_or_crop == 'crop':
         transform_list.append(M_RandomCrop(opt.fineSize))
     elif opt.resize_or_crop == 'scale_width':

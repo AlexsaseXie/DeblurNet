@@ -2,10 +2,10 @@ import time
 from options.train_options import TrainOptions
 from data.data_loader import CreateDataLoader
 from models.models import create_model
-from util.visualizer import Visualizer
 from util.metrics import PSNR, SSIM
 
-def train(opt, data_loader, model, visualizer):
+
+def train(opt, data_loader, model):
 	dataset = data_loader.load_data()
 	dataset_size = len(data_loader)
 	print('#training images = %d' % dataset_size)
@@ -22,17 +22,17 @@ def train(opt, data_loader, model, visualizer):
 
 			if total_steps % opt.display_freq == 0:
 				results = model.get_current_visuals()
-				psnrMetric = PSNR(results['Restored_Train'],results['Sharp_Train'])
+				psnrMetric = PSNR(results['Restored_Train'], results['Sharp_Train'])
 				print('PSNR on Train = %f' %
 					  (psnrMetric))
-				visualizer.display_current_results(results,epoch)
+				#visualizer.display_current_results(results,epoch)
 
 			if total_steps % opt.print_freq == 0:
 				errors = model.get_current_errors()
 				t = (time.time() - iter_start_time) / opt.batchSize
-				visualizer.print_current_errors(epoch, epoch_iter, errors, t)
-				if opt.display_id > 0:
-					visualizer.plot_current_errors(epoch, float(epoch_iter)/dataset_size, opt, errors)
+				#visualizer.print_current_errors(epoch, epoch_iter, errors, t)
+				# if opt.display_id > 0:
+				# 	visualizer.plot_current_errors(epoch, float(epoch_iter)/dataset_size, opt, errors)
 
 			if total_steps % opt.save_latest_freq == 0:
 				print('saving the latest model (epoch %d, total_steps %d)' %
@@ -54,5 +54,5 @@ def train(opt, data_loader, model, visualizer):
 opt = TrainOptions().parse()
 data_loader = CreateDataLoader(opt)
 model = create_model(opt)
-visualizer = Visualizer(opt)
-train(opt, data_loader, model, visualizer)
+# visualizer = Visualizer(opt)
+train(opt, data_loader, model)
