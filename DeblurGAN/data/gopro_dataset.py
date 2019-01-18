@@ -1,6 +1,6 @@
 import os.path
 import torchvision.transforms as transforms
-from data.base_dataset import BaseDataset, get_transform
+from data.base_dataset import BaseDataset, get_transform, __scale_width
 from data.image_folder import make_dataset
 from PIL import Image
 import PIL
@@ -41,6 +41,19 @@ class GoProDataset(BaseDataset):
         self.size = len(self.A_paths)
         self.transform = get_transform(opt)
 
+        self.resize = transforms.Compose([
+            transforms.Resize([opt.loadSizeX, opt.loadSizeY],Image.BICUBIC)
+        ])
+
+        self.scale_width = transforms.Lambda(
+            lambda img: __scale_width(img, opt.loadSizeX))
+
+        self.totensor = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5),
+                                (0.5, 0.5, 0.5))
+        ])
+
     def __getitem__(self, index):
         A_path = self.A_paths[index % self.size]
         B_path = self.B_paths[index % self.size]
@@ -48,8 +61,30 @@ class GoProDataset(BaseDataset):
         A_img = Image.open(A_path).convert('RGB')
         B_img = Image.open(B_path).convert('RGB')
 
-        A_img = self.transform(A_img)
-        B_img = self.transform(B_img)
+        if not 'crop' in self.opt.resize_or_crop:
+            A_img = self.transform(A_img)
+            B_img = self.transform(B_img)
+        else :
+            if self.opt.resize_or_crop == 'resize_and_crop':
+                A_img = self.resize(A_img)
+                B_img = self.resize(B_img)
+            elif self.opt.resize_or_crop == 'scale_width_and_crop':
+                A_img = self.scale_width(A_img)
+                B_img = self.scale_width(B_img)
+
+            A_img = self.totensor(A_img)
+            B_img = self.totensor(B_img)
+
+            w = A_img.size(2)
+            h = A_img.size(1)
+
+            w_offset = random.randint(0, max(0, w - self.opt.fineSize - 1))
+            h_offset = random.randint(0, max(0, h - self.opt.fineSize - 1))
+
+            A_img = A_img[:, h_offset:h_offset + self.opt.fineSize,
+                        w_offset:w_offset + self.opt.fineSize]
+            B_img = B_img[:, h_offset:h_offset + self.opt.fineSize,
+                        w_offset:w_offset + self.opt.fineSize]
 
         return {'A': A_img, 'B': B_img,
                 'A_paths': A_path, 'B_paths': B_path}

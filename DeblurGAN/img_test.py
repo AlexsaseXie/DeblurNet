@@ -34,11 +34,12 @@ counter = 0
 for i, data in enumerate(dataset):
     if i >= opt.how_many:
         break
-    img_width = data['A'].shape[2]
-    img_height = data['A'].shape[3]
+    counter = i
+    img_height = data['A'].shape[2]
+    img_width = data['A'].shape[3]
 
-    img = np.zeros((img_width, img_height, 3), int)
-    area_count = np.zeros((img_width, img_height), int)
+    img = np.zeros((img_height, img_width, 3), int)
+    area_count = np.zeros((img_height, img_width), int)
 
     w_s = 0
     h_s = 0
@@ -56,13 +57,13 @@ for i, data in enumerate(dataset):
             if (w_s + img_s > img_width):
                 w_s = img_width - img_s
             
-            area_count[w_s:w_s+img_s, h_s:h_s+img_s] += 1
+            area_count[h_s:h_s+img_s, w_s:w_s+img_s] += 1
 
-            model.set_input({'A': data['A'][:,:,w_s:w_s+img_s, h_s:h_s+img_s], 'A_paths': data['A_paths']})
+            model.set_input({'A': data['A'][:,:,h_s:h_s+img_s, w_s:w_s+img_s], 'A_paths': data['A_paths']})
             model.test()
             visuals = model.get_current_visuals()
 
-            img[w_s:w_s+img_s, h_s:h_s+img_s, :] += visuals['fake_B'].astype(int)
+            img[h_s:h_s+img_s, w_s:w_s+img_s, :] += visuals['fake_B'].astype(int)
 
             if (w_s + img_s >= img_width):
                 break

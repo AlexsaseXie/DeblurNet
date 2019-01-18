@@ -13,6 +13,9 @@ def CreateDataset(opt):
     elif opt.dataset_mode == 'single':
         from data.single_dataset import SingleDataset
         dataset = SingleDataset()
+    elif opt.dataset_mode == 'gopro':
+        from data.gopro_dataset import GoProDataset
+        dataset = GoProDataset()
     else:
         raise ValueError("Dataset [%s] not recognized." % opt.dataset_mode)
 
