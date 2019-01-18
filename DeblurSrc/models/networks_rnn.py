@@ -5,8 +5,7 @@ from torch.autograd import Variable
 from torchvision import transforms
 
 import os
-
-from networks import get_norm_layer, weights_init
+from .networks import get_norm_layer, weights_init
 
 
 def define_RNN_G(opt):
@@ -222,7 +221,9 @@ class DeblurNetGeneratorReuse(nn.Module):
         super(DeblurNetGeneratorReuse, self).__init__()
         self.height, self.width = shape
         self.num_levels = num_levels
+        self.batch_size = batch_size
         self.channels = channels
+        self.gpu = gpu
 
         self.min_height = self.height / (2 ** self.num_levels)
         self.min_width = self.width / (2 ** self.num_levels)
@@ -230,24 +231,25 @@ class DeblurNetGeneratorReuse(nn.Module):
                                int(round(self.min_width * (2 ** i)))) for i in range(self.num_levels)]
 
         self.layer = CNNLayer(self.channels)
-        self.state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0], gpu)  # h, c
 
     def forward(self, *xs):
         # xs: (x_0, x_1, x_2)
         # x: [batch, 3, height, width]
         pred = xs[0]
+        batch_size = pred.size(0)
         preds = []
+        state = ConvLSTMCell.init_state(batch_size, 128, self.scaled_shapes[0], self.gpu)  # h, c
 
         for i in range(self.num_levels):
             x_shape = (xs[i].shape[-2], xs[i].shape[-1])
 
             scaled_last_pred = F.interpolate(pred.detach().cuda(), size=x_shape, mode='bilinear', align_corners=False)
-            scaled_h = F.interpolate(self.state[0], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
-            scaled_c = F.interpolate(self.state[1], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
+            scaled_h = F.interpolate(state[0], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
+            scaled_c = F.interpolate(state[1], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
             inputs = torch.cat([xs[i], scaled_last_pred], dim=1)
 
             pred, next_h, next_c = self.layer(inputs, scaled_h, scaled_c)
-            self.state = next_h, next_c
+            state = next_h, next_c
             preds.append(pred)
 
         return tuple(preds)
@@ -277,7 +279,7 @@ class DeblurNetGenerator(nn.Module):
             x_shape = (xs[i].shape[-2], xs[i].shape[-1])
 
             scaled_last_pred = F.interpolate(pred.detach().cuda(), size=x_shape, mode='bilinear', align_corners=False)
-            print(pred.device)
+            #print(pred.device)
             scaled_h = F.interpolate(self.state[0], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
             scaled_c = F.interpolate(self.state[1], size=(xs[i].shape[-2] // 4, xs[i].shape[-1] // 4), mode='bilinear', align_corners=False)
             inputs = torch.cat([xs[i], scaled_last_pred], dim=1)
@@ -304,20 +306,23 @@ def test_model(device=None):
     optimizer = torch.optim.Adam([param for param in net.parameters() if param.requires_grad], weight_decay=0, lr=1e-4)
     net.train()
 
-    input0 = torch.randn(batch, 3, 64, 64)
-    input1 = torch.randn(batch, 3, 128, 128)
-    input2 = torch.randn(batch, 3, 256, 256)
-    input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
-    input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
-    input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
-    output = net(input0, input1, input2)
+    for i in range(3):
+        optimizer.zero_grad()
+        input0 = torch.randn(batch, 3, 64, 64)
+        input1 = torch.randn(batch, 3, 128, 128)
+        input2 = torch.randn(batch, 3, 256, 256)
+        input0 = Variable(torch.cuda.FloatTensor(input0.cuda()))
+        input1 = Variable(torch.cuda.FloatTensor(input1.cuda()))
+        input2 = Variable(torch.cuda.FloatTensor(input2.cuda()))
+        output = net(input0, input1, input2)
 
-    loss = test_loss(output[0])
-    loss.backward()
-    optimizer.step()
+        loss = test_loss(output[0])
+        loss.backward()
+        optimizer.step()
 
-    print(output[0].shape)
-    print(float(loss))
+        #print(output[0].shape)
+        print(float(loss))
 
-    # for out in output:
-    #     print(out.shape)
+
+if __name__ == '__main__':
+    test_model(0)
